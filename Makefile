@@ -3,8 +3,8 @@ OUT=bedit
 SRCS=main.cpp
 LD=ncurses
 defualt:
-	$(CXX) $(SRCS) -l${LD} -o $(OUT) --std=c++17
+	$(CXX) $(SRCS) -l${LD} -o build/$(OUT) --std=c++17
 clean:
-	rm $(OUT)
+	rm build/$(OUT)
 run:
-	 ./$(OUT)
+	 ./build//$(OUT)
