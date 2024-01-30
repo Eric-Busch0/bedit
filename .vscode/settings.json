@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "*.cpp": "cpp",
+        "__bit_reference": "cpp",
+        "deque": "cpp",
+        "ios": "cpp",
+        "__string": "cpp",
+        "random": "cpp",
+        "variant": "cpp"
+    }
+}
