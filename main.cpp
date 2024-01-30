@@ -1,5 +1,6 @@
 #include <iostream>
 #include <ncurses.h>
+#include <ostream>
 
 #define MAX_ROWS 9999
 #define LINE_NUM_WIDTH 4
@@ -37,6 +38,21 @@ WINDOW *init_app()
 
 int main(int argc, char **argv)
 {
+#if 0
+    if (argc < 2)
+    {
+        std::cout << "Please enter a file!\n";
+        return -1;
+    }
+
+    FILE *f = fopen(argv[1], "rw");
+
+    if(f == NULL)
+    {
+        std::cout << "Failed to open file " << argv[1] << std::endl;
+        return -1;
+    }
+#endif
 
     WINDOW *win = init_app();
 
@@ -51,6 +67,7 @@ int main(int argc, char **argv)
             break;
         }
         case KEY_SAVE:
+            printw("SAVING");
             break;
 
         case KEY_LEFT:
