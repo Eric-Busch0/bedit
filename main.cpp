@@ -58,17 +58,16 @@ int main(int argc, char **argv)
             break;
 
         case KEY_RIGHT:
-{
+        {
             const int x = getcurx(win);
 
-            if(x < MAX_COLS)
+            if (x < MAX_COLS)
             {
                 move(getcury(win), x + 1);
             }
-}
-            
+        }
 
-            break;
+        break;
         case KEY_UP:
         {
             const int y = getcury(win);
