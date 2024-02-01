@@ -36,7 +36,9 @@ WINDOW *init_app()
     move(getcury(win), STARTING_COL);
 
     keypad(stdscr, TRUE);
-
+    cbreak();
+    noecho();
+    nonl();
     return win;
 }
 void init_window(const WINDOW *win , std::fstream &file)
@@ -142,7 +144,9 @@ int main(int argc, char **argv)
             }
         }
         break;
-        case '\n':
+        
+        case '\r':
+        case KEY_ENTER:
         {
            
             const int next_line = getcury(win) + 1;
@@ -156,8 +160,8 @@ int main(int argc, char **argv)
         }
         break;
         default:
-            
 
+            printw("%c", key);
             break;
         }
         refresh();
