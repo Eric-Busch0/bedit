@@ -7,4 +7,4 @@ defualt:
 clean:
 	rm build/$(OUT)
 run:
-	 ./build//$(OUT)
+	 ./build/$(OUT)

@@ -1,6 +1,9 @@
 #include <iostream>
 #include <ncurses.h>
 #include <ostream>
+#include <fstream>
+#include <array>
+#include <list>
 
 #define MAX_ROWS 9999
 #define LINE_NUM_WIDTH 4
@@ -9,8 +12,9 @@
 
 struct
 {
+    std::list<char> textdata;
     size_t num_lines;
-
+    std::string filename;
 } win_cb;
 
 void move_left(const WINDOW *win)
@@ -35,26 +39,60 @@ WINDOW *init_app()
 
     return win;
 }
+void init_window(const WINDOW *win , std::fstream &file)
+{  
 
+    const int window_height = getmaxy(win);
+
+    std::string line;
+    
+    while(std::getline(file, line) && getcury(win) < window_height)
+    {
+        printw(line.c_str());
+        move(getcury(win) + 1, getcurx(win));
+    }
+    
+}
 int main(int argc, char **argv)
 {
-#if 0
-    if (argc < 2)
-    {
-        std::cout << "Please enter a file!\n";
-        return -1;
-    }
+    
+    std::ifstream file;
 
-    FILE *f = fopen(argv[1], "rw");
-
-    if(f == NULL)
+    if (argc >= 2)
     {
-        std::cout << "Failed to open file " << argv[1] << std::endl;
-        return -1;
+        file.open(argv[1]);
+        win_cb.filename = std::string(argv[1]);
+        while (!file.eof())
+        {
+            win_cb.textdata.push_back(file.get());
+        }
+
     }
-#endif
+    else
+    {
+        win_cb.filename = std::string("temp.txt");
+        file.open("temp.txt");
+    }
 
     WINDOW *win = init_app();
+
+    for(auto ch : win_cb.textdata)
+    {
+
+        printw("%c", ch);
+        
+        if(ch == '\n')
+        {
+            const int current_line = getcury(win);
+
+            printw("%d", current_line);
+            move(current_line, STARTING_COL);
+        }
+    
+    }
+
+
+
 
     int key;
     while ((key = getch()) != KEY_F(1))
@@ -63,6 +101,7 @@ int main(int argc, char **argv)
         {
         case KEY_BACKSPACE:
         {
+            
             move_left(win);
             break;
         }
@@ -105,6 +144,7 @@ int main(int argc, char **argv)
         break;
         case '\n':
         {
+           
             const int next_line = getcury(win) + 1;
             mvprintw(next_line, 0, "%d", next_line);
             move(next_line, STARTING_COL);
@@ -116,12 +156,16 @@ int main(int argc, char **argv)
         }
         break;
         default:
+            
+
             break;
         }
         refresh();
     }
 
     endwin();
+
+    file.close();
 
     return 0;
 }

@@ -6,6 +6,7 @@
         "ios": "cpp",
         "__string": "cpp",
         "random": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "istream": "cpp"
     }
 }
