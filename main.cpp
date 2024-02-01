@@ -41,60 +41,55 @@ WINDOW *init_app()
     nonl();
     return win;
 }
-void init_window(const WINDOW *win , std::fstream &file)
-{  
-
+void init_window(const WINDOW *win, std::fstream &file)
+{
     const int window_height = getmaxy(win);
 
     std::string line;
-    
-    while(std::getline(file, line) && getcury(win) < window_height)
+
+    while (std::getline(file, line) && getcury(win) < window_height)
     {
         printw(line.c_str());
         move(getcury(win) + 1, getcurx(win));
     }
-    
 }
-int main(int argc, char **argv)
+void init_text(WINDOW *win)
 {
-    
-    std::ifstream file;
-
-    if (argc >= 2)
-    {
-        file.open(argv[1]);
-        win_cb.filename = std::string(argv[1]);
-        while (!file.eof())
-        {
-            win_cb.textdata.push_back(file.get());
-        }
-
-    }
-    else
-    {
-        win_cb.filename = std::string("temp.txt");
-        file.open("temp.txt");
-    }
-
-    WINDOW *win = init_app();
-
-    for(auto ch : win_cb.textdata)
+    for (auto ch : win_cb.textdata)
     {
 
         printw("%c", ch);
-        
-        if(ch == '\n')
+
+        if (ch == '\n')
         {
             const int current_line = getcury(win);
 
             printw("%d", current_line);
             move(current_line, STARTING_COL);
         }
-    
+    }
+}
+
+int main(int argc, char **argv)
+{
+
+    std::ifstream file;
+
+    if (argc >= 2)
+    {
+        file.open(argv[1]);
+        win_cb.filename = std::string(argv[1]);
+
+        while (!file.eof())
+        {
+            char ch = file.get();
+            win_cb.textdata.push_back(ch);
+        }
     }
 
+    WINDOW *main_win = init_app();
 
-
+    init_text(main_win);
 
     int key;
     while ((key = getch()) != KEY_F(1))
@@ -102,54 +97,52 @@ int main(int argc, char **argv)
         switch (key)
         {
         case KEY_BACKSPACE:
-        {
-            
-            move_left(win);
+            move_left(main_win);
             break;
-        }
+        
         case KEY_SAVE:
             printw("SAVING");
             break;
 
         case KEY_LEFT:
-            move_left(win);
+            move_left(main_win);
             break;
 
         case KEY_RIGHT:
         {
-            const int x = getcurx(win);
+            const int x = getcurx(main_win);
 
             if (x < MAX_COLS)
             {
-                move(getcury(win), x + 1);
+                move(getcury(main_win), x + 1);
             }
         }
 
         break;
         case KEY_UP:
         {
-            const int y = getcury(win);
+            const int y = getcury(main_win);
 
             if (y > 0)
             {
-                move(y - 1, getcurx(win));
+                move(y - 1, getcurx(main_win));
             }
         }
         break;
         case KEY_DOWN:
         {
-            if (getcury(win) < win_cb.num_lines)
+            if (getcury(main_win) < win_cb.num_lines)
             {
-                move(getcury(win) + 1, getcurx(win));
+                move(getcury(main_win) + 1, getcurx(main_win));
             }
         }
         break;
-        
+
         case '\r':
         case KEY_ENTER:
         {
-           
-            const int next_line = getcury(win) + 1;
+
+            const int next_line = getcury(main_win) + 1;
             mvprintw(next_line, 0, "%d", next_line);
             move(next_line, STARTING_COL);
 
