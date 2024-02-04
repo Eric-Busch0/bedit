@@ -4,17 +4,25 @@
 #include <fstream>
 #include <array>
 #include <list>
+#include <unordered_map>
 
 #define MAX_ROWS 9999
 #define LINE_NUM_WIDTH 4
 #define STARTING_COL (LINE_NUM_WIDTH + 1)
 #define MAX_COLS 140
 
+typedef enum
+{
+    LINENUMSWIN,
+    TEXTWIN,
+    TOTAL_WINDOWS
+} windows_t;
 struct
 {
     std::list<char> textdata;
     size_t num_lines;
     std::string filename;
+    std::array<WINDOW *, TOTAL_WINDOWS> windows;
 } win_cb;
 
 void move_left(const WINDOW *win)
@@ -27,69 +35,77 @@ void move_left(const WINDOW *win)
     }
 }
 
-WINDOW *init_app()
+void init_app(void)
 {
-    WINDOW *win = initscr();
     win_cb.num_lines = 0;
-
-    mvprintw(0, 0, "0");
-    move(getcury(win), STARTING_COL);
-
+    initscr();
     keypad(stdscr, TRUE);
     cbreak();
     noecho();
     nonl();
-    return win;
 }
-void init_window(const WINDOW *win, std::fstream &file)
+
+WINDOW *init_linenum_win(size_t linenums)
 {
-    const int window_height = getmaxy(win);
-
-    std::string line;
-
-    while (std::getline(file, line) && getcury(win) < window_height)
+    int height, width;
+    getmaxyx(stdscr, height, width);
+    WINDOW *linenum_win = newwin(height, width, 0, 0);
+    refresh();
+    for (size_t i = 0; i < linenums; i++)
     {
-        printw(line.c_str());
-        move(getcury(win) + 1, getcurx(win));
+        mvwprintw(linenum_win, i, 0, "%ld", i + 1);
     }
+    wrefresh(linenum_win);
+    return linenum_win;
 }
-void init_text(WINDOW *win)
+WINDOW *init_text_win(const char *filepath)
 {
-    for (auto ch : win_cb.textdata)
+    int height, width;
+    getmaxyx(stdscr, height, width);
+    WINDOW *textwin = newwin(height, width, 0, STARTING_COL);
+
+    refresh();
+
+    if (filepath == nullptr)
     {
+        return textwin;
+    }
+    std::ifstream file = std::ifstream(filepath);
 
-        printw("%c", ch);
-
+    char ch;
+    while (file.get(ch))
+    {
         if (ch == '\n')
         {
-            const int current_line = getcury(win);
-
-            printw("%d", current_line);
-            move(current_line, STARTING_COL);
+            win_cb.num_lines++;
         }
-    }
-}
 
+        win_cb.textdata.push_back(ch);
+        wprintw(textwin, "%c", ch);
+    }
+    wmove(textwin, 0, 0);
+    wrefresh(textwin);
+
+    return textwin;
+}
 int main(int argc, char **argv)
 {
 
-    std::ifstream file;
+    init_app();
 
     if (argc >= 2)
     {
-        file.open(argv[1]);
         win_cb.filename = std::string(argv[1]);
-
-        while (!file.eof())
-        {
-            char ch = file.get();
-            win_cb.textdata.push_back(ch);
-        }
+        win_cb.windows[TEXTWIN] = init_text_win(argv[1]);
+    }
+    else
+    {
+        win_cb.windows[TEXTWIN] = init_text_win(NULL);
     }
 
-    WINDOW *main_win = init_app();
+    
 
-    init_text(main_win);
+    // win_cb.windows[LINENUMSWIN] = init_linenum_win(win_cb.num_lines);
 
     int key;
     while ((key = getch()) != KEY_F(1))
@@ -97,43 +113,43 @@ int main(int argc, char **argv)
         switch (key)
         {
         case KEY_BACKSPACE:
-            move_left(main_win);
+            move_left(win_cb.windows[TEXTWIN]);
             break;
-        
+
         case KEY_SAVE:
             printw("SAVING");
             break;
 
         case KEY_LEFT:
-            move_left(main_win);
+            move_left(win_cb.windows[TEXTWIN]);
             break;
 
         case KEY_RIGHT:
         {
-            const int x = getcurx(main_win);
+            const int x = getcurx(win_cb.windows[TEXTWIN]);
 
             if (x < MAX_COLS)
             {
-                move(getcury(main_win), x + 1);
+                move(getcury(win_cb.windows[TEXTWIN]), x + 1);
             }
         }
 
         break;
         case KEY_UP:
         {
-            const int y = getcury(main_win);
+            const int y = getcury(win_cb.windows[TEXTWIN]);
 
             if (y > 0)
             {
-                move(y - 1, getcurx(main_win));
+                move(y - 1, getcurx(win_cb.windows[TEXTWIN]));
             }
         }
         break;
         case KEY_DOWN:
         {
-            if (getcury(main_win) < win_cb.num_lines)
+            if (getcury(win_cb.windows[TEXTWIN]) < win_cb.num_lines)
             {
-                move(getcury(main_win) + 1, getcurx(main_win));
+                move(getcury(win_cb.windows[TEXTWIN]) + 1, getcurx(win_cb.windows[TEXTWIN]));
             }
         }
         break;
@@ -142,7 +158,7 @@ int main(int argc, char **argv)
         case KEY_ENTER:
         {
 
-            const int next_line = getcury(main_win) + 1;
+            const int next_line = getcury(win_cb.windows[TEXTWIN]) + 1;
             mvprintw(next_line, 0, "%d", next_line);
             move(next_line, STARTING_COL);
 
@@ -161,8 +177,6 @@ int main(int argc, char **argv)
     }
 
     endwin();
-
-    file.close();
 
     return 0;
 }
