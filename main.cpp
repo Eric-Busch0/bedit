@@ -22,22 +22,25 @@ struct
     std::list<char> textdata;
     size_t num_lines;
     std::string filename;
-    std::array<WINDOW *, TOTAL_WINDOWS> windows;
-} win_cb;
+    WINDOW *linenum_win;
+    WINDOW *textwin;
+} wincb;
 
-void move_left(const WINDOW *win)
+std::array<WINDOW *, TOTAL_WINDOWS> windows;
+
+void move_left(WINDOW *win)
 {
     const int x = getcurx(win);
 
     if (x > STARTING_COL)
     {
-        move(getcury(win), x - 1);
+        wmove(win, getcury(win), x - 1);
     }
 }
 
 void init_app(void)
 {
-    win_cb.num_lines = 0;
+    wincb.num_lines = 0;
     initscr();
     keypad(stdscr, TRUE);
     cbreak();
@@ -50,6 +53,7 @@ WINDOW *init_linenum_win(size_t linenums)
     int height, width;
     getmaxyx(stdscr, height, width);
     WINDOW *linenum_win = newwin(height, width, 0, 0);
+    wmove(linenum_win, 0, 0);
     refresh();
     for (size_t i = 0; i < linenums; i++)
     {
@@ -63,7 +67,7 @@ WINDOW *init_text_win(const char *filepath)
     int height, width;
     getmaxyx(stdscr, height, width);
     WINDOW *textwin = newwin(height, width, 0, STARTING_COL);
-
+    wmove(textwin, 0, 0);
     refresh();
 
     if (filepath == nullptr)
@@ -77,16 +81,33 @@ WINDOW *init_text_win(const char *filepath)
     {
         if (ch == '\n')
         {
-            win_cb.num_lines++;
+            wincb.num_lines++;
         }
 
-        win_cb.textdata.push_back(ch);
+        wincb.textdata.push_back(ch);
         wprintw(textwin, "%c", ch);
     }
     wmove(textwin, 0, 0);
     wrefresh(textwin);
 
     return textwin;
+}
+void render_text()
+{
+    int ypos, xpos;
+    getyx(wincb.textwin, ypos, xpos);
+
+    werase(wincb.textwin);
+    wmove(wincb.textwin, 0, 0);
+
+    for(char c : wincb.textdata)
+    {
+        wprintw(wincb.textwin, "%c", c);
+    }
+
+    wmove(wincb.textwin, ypos, xpos);
+    wrefresh(wincb.textwin);
+
 }
 int main(int argc, char **argv)
 {
@@ -95,61 +116,63 @@ int main(int argc, char **argv)
 
     if (argc >= 2)
     {
-        win_cb.filename = std::string(argv[1]);
-        win_cb.windows[TEXTWIN] = init_text_win(argv[1]);
+        wincb.filename = std::string(argv[1]);
+        wincb.textwin = init_text_win(argv[1]);
+        windows[TEXTWIN] = wincb.textwin;
     }
     else
     {
-        win_cb.windows[TEXTWIN] = init_text_win(NULL);
+        wincb.textwin = init_text_win(NULL);
+        windows[TEXTWIN] = wincb.textwin;
+
     }
 
-    
-
-    // win_cb.windows[LINENUMSWIN] = init_linenum_win(win_cb.num_lines);
+        // wincb.linenum_win = init_linenum_win(wincb.num_lines);
 
     int key;
     while ((key = getch()) != KEY_F(1))
     {
         switch (key)
         {
+        case KEY_DC:
         case KEY_BACKSPACE:
-            move_left(win_cb.windows[TEXTWIN]);
+            move_left(wincb.textwin);
             break;
 
-        case KEY_SAVE:
+        case 19:
             printw("SAVING");
             break;
 
         case KEY_LEFT:
-            move_left(win_cb.windows[TEXTWIN]);
+            move_left(wincb.textwin);
             break;
 
         case KEY_RIGHT:
         {
-            const int x = getcurx(win_cb.windows[TEXTWIN]);
+            const int x = getcurx(wincb.textwin);
 
             if (x < MAX_COLS)
             {
-                move(getcury(win_cb.windows[TEXTWIN]), x + 1);
+                wmove(wincb.textwin, getcury(wincb.textwin), x + 1);
             }
         }
 
         break;
         case KEY_UP:
         {
-            const int y = getcury(win_cb.windows[TEXTWIN]);
+            const int y = getcury(wincb.textwin);
 
             if (y > 0)
             {
-                move(y - 1, getcurx(win_cb.windows[TEXTWIN]));
+                wmove(wincb.textwin, y - 1, getcurx(wincb.textwin));
             }
         }
         break;
         case KEY_DOWN:
         {
-            if (getcury(win_cb.windows[TEXTWIN]) < win_cb.num_lines)
+            if (getcury(wincb.textwin) < wincb.num_lines)
             {
-                move(getcury(win_cb.windows[TEXTWIN]) + 1, getcurx(win_cb.windows[TEXTWIN]));
+                wmove(wincb.textwin, getcury(wincb.textwin) + 1, getcurx(wincb.textwin));
             }
         }
         break;
@@ -158,22 +181,27 @@ int main(int argc, char **argv)
         case KEY_ENTER:
         {
 
-            const int next_line = getcury(win_cb.windows[TEXTWIN]) + 1;
-            mvprintw(next_line, 0, "%d", next_line);
-            move(next_line, STARTING_COL);
+            const int next_line = getcury(wincb.textwin) + 1;
+            mvwprintw(wincb.linenum_win, next_line, 0, "%d", next_line);
+            wmove(wincb.textwin, next_line, STARTING_COL);
 
-            if (next_line > win_cb.num_lines)
+            if (next_line > wincb.num_lines)
             {
-                win_cb.num_lines = next_line;
+                wincb.num_lines = next_line;
             }
         }
         break;
         default:
 
-            printw("%c", key);
+            wprintw(wincb.textwin, "%c", key);
+            // render_text();
             break;
         }
-        refresh();
+
+        for(auto win : windows)
+        {
+            wrefresh(win);
+        }
     }
 
     endwin();
