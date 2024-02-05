@@ -5,6 +5,8 @@
 #include <array>
 #include <list>
 #include <unordered_map>
+#include "commands.h"
+#include "doucment.h"
 
 #define MAX_ROWS 9999
 #define LINE_NUM_WIDTH 4
@@ -23,9 +25,9 @@ typedef enum
 
 typedef enum
 {
+    MODE_CMD,
     MODE_INSERT,
-    MODE_CMD
-} mode_t;
+} win_mode_t;
 
 struct
 {
@@ -34,7 +36,7 @@ struct
     std::string filename;
     WINDOW *linenum_win;
     WINDOW *textwin;
-    mode_t mode;
+    win_mode_t mode;
 } wincb;
 
 
@@ -44,21 +46,20 @@ std::array<WINDOW *, TOTAL_WINDOWS> windows;
 void move_left(WINDOW *win)
 {
     const int x = getcurx(win);
-
-    if (x > STARTING_COL)
-    {
-        wmove(win, getcury(win), x - 1);
-    }
+    wmove(win, getcury(win), x - 1);
+    
 }
 
 void init_app(void)
 {
     wincb.num_lines = 0;
+    wincb.mode = MODE_CMD;
     initscr();
     keypad(stdscr, TRUE);
     cbreak();
     noecho();
     nonl();
+    set_escdelay(100);
 }
 
 WINDOW *init_linenum_win(size_t linenums)
@@ -68,7 +69,7 @@ WINDOW *init_linenum_win(size_t linenums)
     WINDOW *linenum_win = newwin(height, width, 0, 0);
     wmove(linenum_win, 0, 0);
     refresh();
-    for (size_t i = 0; i < linenums; i++)
+    for (size_t i = 0; i <= linenums; i++)
     {
         mvwprintw(linenum_win, i, 0, "%ld", i + 1);
     }
@@ -92,7 +93,7 @@ WINDOW *init_text_win(const char *filepath)
     char ch;
     while (file.get(ch))
     {
-        if (ch == '\n')
+        if (ch == '\n' || ch == '\r')
         {
             wincb.num_lines++;
         }
@@ -117,7 +118,7 @@ void render_text()
     {
         wprintw(wincb.textwin, "%c", c);
     }
-
+    
     wmove(wincb.textwin, ypos, xpos);
     wrefresh(wincb.textwin);
 
@@ -126,6 +127,7 @@ int main(int argc, char **argv)
 {
 
     init_app();
+    Document doc;
 
     if (argc >= 2)
     {
@@ -139,9 +141,10 @@ int main(int argc, char **argv)
         windows[TEXTWIN] = wincb.textwin;
 
     }
+    
 
-        // wincb.linenum_win = init_linenum_win(wincb.num_lines);
-    set_escdelay(100);
+    wincb.linenum_win = init_linenum_win(wincb.num_lines);
+    render_text();
 
     int key;
     while ((key = getch()) != KEY_F(1))
@@ -150,9 +153,12 @@ int main(int argc, char **argv)
         {
         case KEY_ESC_ALT:
             wincb.mode = MODE_CMD;
+
             break;
         case KEY_DC:
         case KEY_BACKSPACE:
+        case 127:
+        case '\b':
             move_left(wincb.textwin);
             break;
 
@@ -163,8 +169,8 @@ int main(int argc, char **argv)
         case KEY_RIGHT:
         {
             const int x = getcurx(wincb.textwin);
-
-            if (x < MAX_COLS)
+            
+            if (x < getmaxx(wincb.textwin) - 1)
             {
                 wmove(wincb.textwin, getcury(wincb.textwin), x + 1);
             }
@@ -197,7 +203,7 @@ int main(int argc, char **argv)
             const int next_line = getcury(wincb.textwin) + 1;
             mvwprintw(wincb.linenum_win, next_line, 0, "%d", next_line);
             wmove(wincb.textwin, next_line, STARTING_COL);
-
+            wincb.textdata.push_back('\n');
             if (next_line > wincb.num_lines)
             {
                 wincb.num_lines = next_line;
@@ -207,12 +213,20 @@ int main(int argc, char **argv)
         default:
             if(wincb.mode == MODE_INSERT)
             {
-                wprintw(wincb.textwin, "%c", key);
+                int y,x;
+                getyx(wincb.textwin, y, x);
+                wincb.textdata.push_back(key);
+              
+                wmove(wincb.textwin, y, x + 1);
+                // wprintw(wincb.textwin, "%c", key);
             }
             else if(key == 'i'){
                 wincb.mode = MODE_INSERT;
             }
-            // render_text();
+            else{
+                command_run(key, doc);
+            }
+            render_text();
             break;
         }
 
@@ -220,6 +234,7 @@ int main(int argc, char **argv)
         {
             wrefresh(win);
         }
+        // refresh();
     }
 
     endwin();
