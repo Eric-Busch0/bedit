@@ -11,12 +11,22 @@
 #define STARTING_COL (LINE_NUM_WIDTH + 1)
 #define MAX_COLS 140
 
+#define ESC_DELAY 100 // 100ms
+#define KEY_ESC_ALT 27
+
 typedef enum
 {
     LINENUMSWIN,
     TEXTWIN,
     TOTAL_WINDOWS
 } windows_t;
+
+typedef enum
+{
+    MODE_INSERT,
+    MODE_CMD
+} mode_t;
+
 struct
 {
     std::list<char> textdata;
@@ -24,9 +34,12 @@ struct
     std::string filename;
     WINDOW *linenum_win;
     WINDOW *textwin;
+    mode_t mode;
 } wincb;
 
+
 std::array<WINDOW *, TOTAL_WINDOWS> windows;
+
 
 void move_left(WINDOW *win)
 {
@@ -128,19 +141,19 @@ int main(int argc, char **argv)
     }
 
         // wincb.linenum_win = init_linenum_win(wincb.num_lines);
+    set_escdelay(100);
 
     int key;
     while ((key = getch()) != KEY_F(1))
     {
         switch (key)
         {
+        case KEY_ESC_ALT:
+            wincb.mode = MODE_CMD;
+            break;
         case KEY_DC:
         case KEY_BACKSPACE:
             move_left(wincb.textwin);
-            break;
-
-        case 19:
-            printw("SAVING");
             break;
 
         case KEY_LEFT:
@@ -192,8 +205,13 @@ int main(int argc, char **argv)
         }
         break;
         default:
-
-            wprintw(wincb.textwin, "%c", key);
+            if(wincb.mode == MODE_INSERT)
+            {
+                wprintw(wincb.textwin, "%c", key);
+            }
+            else if(key == 'i'){
+                wincb.mode = MODE_INSERT;
+            }
             // render_text();
             break;
         }
